@@ -121,31 +121,39 @@ function page() {
         }
     }
 
-    useEffect(() => {
-        async function fetch() {
-            setLoading(true)
-            try {
-                const { data } = await axios.get("/api/partner/my-active")
+    const fetchActiveRide = async (silent = false) => {
+        if (!silent) setLoading(true)
+        try {
+            const { data } = await axios.get("/api/partner/my-active")
 
-
-                if(!data){
+            if (!data) {
+                if (!silent) {
                     setLoading(false)
                     setBooking(null)
-                    return
                 }
-                setBooking(data)
-                console.log(data)
-              
-                setStatus(data.bookingStatus)
-                setPickUpPos([data.pickUpLocation.coordinates[1], data.pickUpLocation.coordinates[0]])
-                setDropPos([data.dropLocation.coordinates[1], data.dropLocation.coordinates[0]])
-                setLoading(false)
-            } catch (error: any) {
-                console.log(error.response.data.message)
-                setLoading(false)
+                return
             }
+            setBooking(data)
+            setStatus(data.bookingStatus)
+            if (data.pickUpLocation?.coordinates?.length === 2) {
+                setPickUpPos([data.pickUpLocation.coordinates[1], data.pickUpLocation.coordinates[0]])
+            }
+            if (data.dropLocation?.coordinates?.length === 2) {
+                setDropPos([data.dropLocation.coordinates[1], data.dropLocation.coordinates[0]])
+            }
+        } catch (error: any) {
+            console.log(error?.response?.data?.message || error)
+        } finally {
+            if (!silent) setLoading(false)
         }
-        fetch()
+    }
+
+    useEffect(() => {
+        fetchActiveRide()
+        const interval = setInterval(() => {
+            fetchActiveRide(true)
+        }, 3000)
+        return () => clearInterval(interval)
     }, [])
 
     const onChatToggle = () => {

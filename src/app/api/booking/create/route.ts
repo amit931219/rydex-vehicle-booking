@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     try {
         await connectDb()
         const session = await auth()
-        if (!session?.user?.id) {
+        if (!session?.user?.id && !session?.user?.email) {
             return NextResponse.json(
                 { message: "unauthorize" },
                 { status: 400 }
@@ -27,17 +27,27 @@ export async function POST(req: NextRequest) {
             mobileNumber,
         } = await req.json()
 
-        if (!driverId || !vehicleId || !pickUpLocation.coordinates || !dropLocation.coordinates) {
+        if (!driverId || !vehicleId || !pickUpLocation?.coordinates || !dropLocation?.coordinates) {
             return NextResponse.json(
                 { message: "missing required details" },
                 { status: 400 }
             )
         }
         const user = await User.findOne({ email: session.user.email })
-        const driver = await User.findById(driverId)
+        if (!user) {
+            return NextResponse.json(
+                { message: "user not found" },
+                { status: 400 }
+            )
+        }
+
+        let driver = await User.findById(driverId)
+        if (!driver) {
+            driver = await User.findOne({ role: "partner", partnerStatus: "approved", isOnline: true })
+        }
         if (!driver) {
             return NextResponse.json(
-                { message: "driver not found" },
+                { message: "No available driver found" },
                 { status: 400 }
             )
         }
@@ -67,31 +77,35 @@ export async function POST(req: NextRequest) {
 
         const booking = await Booking.create({
             user: user._id,
-            driver,
+            driver: driver._id,
             vehicle: vehicleId,
             pickUpAddress,
             dropAddress,
             pickUpLocation,
             dropLocation,
             fare,
-            userMobileNumber: mobileNumber,
-            driverMobileNumber: driver.mobileNumber,
+            userMobileNumber: mobileNumber || "9999999999",
+            driverMobileNumber: driver.mobileNumber || "9988776655",
             bookingStatus: "requested"
         })
 
-        await axios.post(`${process.env.NEXT_PUBLIC_SOCKET_SERVER_URL}/emit`, {
-            event: "new-booking",
-            userId: driverId,
-            data: booking
-        })
+        try {
+            await axios.post(`${process.env.NEXT_PUBLIC_SOCKET_SERVER_URL}/emit`, {
+                event: "new-booking",
+                userId: driver._id.toString(),
+                data: booking
+            }, { timeout: 3000 })
+        } catch (socketErr: any) {
+            console.error("Socket emit new-booking non-fatal error:", socketErr?.message || socketErr)
+        }
 
         return NextResponse.json(
             booking, { status: 200 }
         )
 
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json(
-            { message: `create booking error ${error}` },
+            { message: `create booking error ${error?.message || error}` },
             { status: 500 }
         )
     }

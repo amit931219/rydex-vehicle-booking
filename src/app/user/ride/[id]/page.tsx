@@ -58,28 +58,70 @@ function page() {
     const [chatOpen, setChatOpen] = useState(false)
     const [expanded, setExpanded] = useState(false)
 
-    const {id}=useParams()
+    const params = useParams()
+    const id = params?.id as string
+
+    const fetchBooking = async (silent = false) => {
+        if (!id) return
+        if (!silent) setLoading(true)
+        try {
+            const { data } = await axios.get(`/api/booking/${id}`)
+            const b = data?.booking || data
+            if (b) {
+                setBooking(b)
+                setStatus(b.bookingStatus)
+                if (b.pickUpLocation?.coordinates?.length === 2) {
+                    setPickUpPos([b.pickUpLocation.coordinates[1], b.pickUpLocation.coordinates[0]])
+                }
+                if (b.dropLocation?.coordinates?.length === 2) {
+                    setDropPos([b.dropLocation.coordinates[1], b.dropLocation.coordinates[0]])
+                }
+                if (b.driver?.location?.coordinates?.length === 2) {
+                    setDriverPos([b.driver.location.coordinates[1], b.driver.location.coordinates[0]])
+                }
+            }
+        } catch (error) {
+            console.error("Fetch booking error:", error)
+        } finally {
+            if (!silent) setLoading(false)
+        }
+    }
+
     useEffect(() => {
+        fetchBooking()
+        const interval = setInterval(() => {
+            fetchBooking(true)
+        }, 3000)
+        return () => clearInterval(interval)
+    }, [id])
+
+    useEffect(() => {
+        if (!id) return
         const socket = getSocket()
         socket.emit("join-ride", id)
         socket.on("driver-location", ({ latitude, longitude }) => {
             setDriverPos([latitude, longitude])
         })
+        socket.on("ride-confirmed", (data) => {
+            setStatus("confirmed")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "confirmed", ...data?.booking, pickUpOtp: data?.pickUpOtp || prev.pickUpOtp } : prev)
+        })
         socket.on("ride-started", (data) => {
             setStatus("started")
-            setBooking((prev) => prev ? { ...prev, bookingStatus: "started", dropOtp: data.dropOtp || prev.dropOtp } : prev)
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "started", dropOtp: data?.dropOtp || prev.dropOtp } : prev)
         })
         socket.on("ride-completed", () => {
             setStatus("completed")
             setBooking((prev) => prev ? { ...prev, bookingStatus: "completed" } : prev)
         })
         socket.on("otp-updated", (data) => {
-            if (data.pickUpOtp) setBooking((prev) => prev ? { ...prev, pickUpOtp: data.pickUpOtp } : prev)
-            if (data.dropOtp) setBooking((prev) => prev ? { ...prev, dropOtp: data.dropOtp } : prev)
+            if (data?.pickUpOtp) setBooking((prev) => prev ? { ...prev, pickUpOtp: data.pickUpOtp } : prev)
+            if (data?.dropOtp) setBooking((prev) => prev ? { ...prev, dropOtp: data.dropOtp } : prev)
         })
         return () => {
             socket.off("join-ride")
             socket.off("driver-location")
+            socket.off("ride-confirmed")
             socket.off("ride-started")
             socket.off("ride-completed")
             socket.off("otp-updated")
@@ -93,16 +135,31 @@ function page() {
                     <div className='w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin' />
                     <p className='text-white/40 text-sm tracking-widest uppercase font-medium'>Loading Ride...</p>
                 </div>
-            </div>)
+            </div>
+        )
     }
 
-     if(status==="completed" && booking){
-            return (
-                <CompletedScreen booking={booking} role='user'/>
-            )
-        }
+    if (!booking) {
+        return (
+            <div className='bg-black w-full h-screen flex flex-col justify-center items-center text-white gap-4'>
+                <p className='text-xl font-bold'>No Active Ride Found</p>
+                <button
+                    onClick={() => window.location.href = "/"}
+                    className='bg-white text-black font-semibold text-xs px-6 py-2.5 rounded-full'
+                >
+                    Back to Home
+                </button>
+            </div>
+        )
+    }
 
-    const cfg = STATUS_LABEL[booking?.bookingStatus! ?? "confirmed"]
+    if (status === "completed" && booking) {
+        return (
+            <CompletedScreen booking={booking} role='user' />
+        )
+    }
+
+    const cfg = STATUS_LABEL[booking?.bookingStatus || (status as BookingStatus) || "confirmed"] || STATUS_LABEL.confirmed
     const isActive = ["confirmed", "started"].includes(status)
     const canChat = booking?.bookingStatus === "confirmed"
     const displayEta = status === "confirmed" ? etaToPickUp : etaToDrop

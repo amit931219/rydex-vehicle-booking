@@ -67,19 +67,37 @@ function CheckOutContent() {
     }
   }
 
-    useEffect(()=>{
-       const socket=getSocket()
-       socket.on("accept-booking",(data)=>{
-        setStatus(data)
-       })
-       socket.on("reject-booking",(data)=>{
-        setStatus(data)
-       })
-       return ()=>{
-          socket.off("accept-booking")
-          socket.off("reject-booking")
-       }
-      },[])
+    useEffect(() => {
+        const socket = getSocket()
+        socket.on("accept-booking", (data) => {
+            if (data === "confirmed" || data?.status === "confirmed") {
+                setStatus("confirmed")
+                const bId = data?.booking?._id || booking?._id
+                if (bId) {
+                    window.location.href = `/user/ride/${bId}`
+                } else {
+                    fetchActiveBooking()
+                }
+            } else {
+                setStatus(typeof data === "string" ? data : (data?.status || "awaiting_payment"))
+            }
+        })
+        socket.on("ride-confirmed", (data) => {
+            setStatus("confirmed")
+            const bId = data?.bookingId || data?.booking?._id || booking?._id
+            if (bId) {
+                window.location.href = `/user/ride/${bId}`
+            }
+        })
+        socket.on("reject-booking", () => {
+            setStatus("rejected")
+        })
+        return () => {
+            socket.off("accept-booking")
+            socket.off("ride-confirmed")
+            socket.off("reject-booking")
+        }
+    }, [booking?._id])
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -151,7 +169,7 @@ function CheckOutContent() {
         setLoading(false)
         if (data.success) {
           setStatus("confirmed")
-          window.location.href = `/user/user/ride/${booking._id}`
+          window.location.href = `/user/ride/${booking._id}`
         }
       }
     } catch (error) {
@@ -165,8 +183,14 @@ function CheckOutContent() {
   const fetchActiveBooking = async () => {
     try {
       const { data } = await axios.get("/api/booking/active")
-      setBooking(data.booking)
-      setStatus(data.booking.bookingStatus || data.booking)
+      if (data?.booking && typeof data.booking === "object") {
+        setBooking(data.booking)
+        const currentStatus = data.booking.bookingStatus
+        setStatus(currentStatus)
+        if (currentStatus === "confirmed" || currentStatus === "started") {
+          window.location.href = `/user/ride/${data.booking._id}`
+        }
+      }
     } catch (error) {
       console.log(error)
     }
@@ -183,6 +207,10 @@ function CheckOutContent() {
 
   useEffect(() => {
     fetchActiveBooking()
+    const interval = setInterval(() => {
+      fetchActiveBooking()
+    }, 3000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
