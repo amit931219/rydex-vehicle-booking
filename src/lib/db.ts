@@ -1,9 +1,12 @@
 import mongoose from "mongoose"
-import dns from "dns"
 
-try {
-    dns.setServers(["8.8.8.8", "1.1.1.1"])
-} catch (e) {}
+// Custom DNS fallback only on local non-production environments (e.g. Windows SRV issue)
+if (process.env.NODE_ENV !== "production") {
+    try {
+        const dns = require("dns")
+        dns.setServers(["8.8.8.8", "1.1.1.1"])
+    } catch (e) {}
+}
 
 const mongodbUrl=process.env.MONGODB_URL
 
@@ -21,19 +24,22 @@ const connectDb=async () => {
         return cached.conn
     }
 
-
     if(!cached.promise){
-        cached.promise=mongoose.connect(mongodbUrl).then(c=>c.connection)
+        cached.promise=mongoose.connect(mongodbUrl, {
+            serverSelectionTimeoutMS: 7000,
+            bufferCommands: false,
+        }).then(c=>c.connection)
     }
 
-try {
-    const conn=await cached.promise
-  
-    return conn
-} catch (error) {
-    console.log(error)
-}
-
+    try {
+        const conn=await cached.promise
+        cached.conn=conn
+        return conn
+    } catch (error) {
+        cached.promise=null
+        console.error("MongoDB connection error:", error)
+        throw error
+    }
 }
 
 export default connectDb

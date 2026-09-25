@@ -9,10 +9,20 @@ import connectDb from "@/lib/db";
 import User from "@/models/user.model";
 
 export default async function Home() {
-const session=await auth()
-  await connectDb()
-  const user=await User.findOne({email:session?.user?.email})
- const plainUser = JSON.parse(JSON.stringify(user))
+  const session = await auth()
+  let plainUser = null
+
+  if (session?.user?.email) {
+    try {
+      await connectDb()
+      const user = await User.findOne({ email: session.user.email })
+      if (user) {
+        plainUser = JSON.parse(JSON.stringify(user))
+      }
+    } catch (err) {
+      console.error("Home page user fetch error:", err)
+    }
+  }
   return (
    <div className="w-full min-h-screen bg-white">
     <GeoUpdater userId={plainUser?._id}/>
