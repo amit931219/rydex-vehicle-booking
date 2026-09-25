@@ -28,11 +28,10 @@ const TYPE_CONFIG = {
 
 }
 function VehicleCard({ vehicle, distance,onBook }: { vehicle: IVehicle, distance: number | undefined,onBook:()=>void }) {
-    const { Icon, label } = TYPE_CONFIG[vehicle.type]
-    let estimated:number=0
-    if(vehicle.baseFare && vehicle.pricePerKM && distance){
-estimated=Math.round(vehicle.baseFare +vehicle.pricePerKM*distance)
-    }
+    const config = TYPE_CONFIG[vehicle.type] || { label: "Ride", Icon: Car }
+    const { Icon, label } = config
+    const effectiveDistance = distance && distance > 0 ? distance : 5
+    const estimated: number = Math.round((vehicle.baseFare || 50) + (vehicle.pricePerKM || 12) * effectiveDistance)
    
     return (
         <motion.div
@@ -52,14 +51,21 @@ estimated=Math.round(vehicle.baseFare +vehicle.pricePerKM*distance)
                     }}
                 />
 
-                <motion.img
-                    src={vehicle.imageUrl}
-                    alt={vehicle.vehicleModel}
-                    className="relative z-10 h-32 w-full object-contain"
-                    style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.14))" }}
-                    whileHover={{ scale: 1.06, filter: "drop-shadow(0 12px 32px rgba(0,0,0,0.22))" }}
-                    transition={{ duration: 0.35 }}
-                />
+                {vehicle.imageUrl ? (
+                    <motion.img
+                        src={vehicle.imageUrl}
+                        alt={vehicle.vehicleModel}
+                        className="relative z-10 h-32 w-full object-contain"
+                        style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.14))" }}
+                        whileHover={{ scale: 1.06, filter: "drop-shadow(0 12px 32px rgba(0,0,0,0.22))" }}
+                        transition={{ duration: 0.35 }}
+                    />
+                ) : (
+                    <div className="relative z-10 flex flex-col items-center justify-center p-4">
+                        <Icon size={56} className="text-zinc-800 opacity-70" />
+                        <span className="text-[11px] font-bold text-zinc-500 mt-2">{vehicle.vehicleModel}</span>
+                    </div>
+                )}
                 <div className='absolute bottom-3 right-3 z-20 flex items-center gap-1.5 bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full'>
                     <Icon size={10} />
                     {label}

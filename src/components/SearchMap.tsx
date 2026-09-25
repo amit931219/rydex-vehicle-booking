@@ -10,7 +10,8 @@ type props = {
   pickUp: string,
   drop: string,
   onChange: (p: string, d: string) => void,
-  onDistance: (d: number) => void
+  onDistance: (d: number) => void,
+  onCoordinates?: (p1: [number, number], p2: [number, number]) => void
 }
 
 function FitBounds({ p1, p2 }: { p1: [number, number], p2: [number, number] }) {
@@ -70,7 +71,7 @@ const dropIcon = new L.DivIcon({
 
 
 
-function SearchMap({ pickUp, drop, onChange, onDistance }: props) {
+function SearchMap({ pickUp, drop, onChange, onDistance, onCoordinates }: props) {
 
   const [p1, setP1] = useState<[number, number]>()
   const [p2, setP2] = useState<[number, number]>()
@@ -161,8 +162,7 @@ function SearchMap({ pickUp, drop, onChange, onDistance }: props) {
         setP1(a)
         setP2(b)
         setReady(true)
-
-
+        onCoordinates?.(a, b)
       })()
 
     }
@@ -180,9 +180,8 @@ function SearchMap({ pickUp, drop, onChange, onDistance }: props) {
 
 
         <TileLayer
-
-          attribution='&copy; <a href="https://carto.com/">"CARTO"</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png" />
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
         {p1 && p2 && <FitBounds p1={p1} p2={p2} />}
 
