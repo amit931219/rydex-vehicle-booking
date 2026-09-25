@@ -176,18 +176,33 @@ function page() {
     }, [booking?._id])
 
     useEffect(() => {
-
         if (!booking?._id) return;
         const socket = getSocket()
         socket.emit("join-ride", booking?._id)
         socket.on("driver-location", ({ latitude, longitude }) => {
             setDriverPos([latitude, longitude])
         })
+        socket.on("ride-confirmed", (data) => {
+            setStatus("confirmed")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "confirmed", ...data.booking } : prev)
+        })
+        socket.on("ride-started", (data) => {
+            setStatus("started")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "started", dropOtp: data.dropOtp } : prev)
+        })
+        socket.on("ride-completed", () => {
+            setStatus("completed")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "completed" } : prev)
+        })
         return () => {
             socket.off("join-ride")
             socket.off("driver-location")
+            socket.off("ride-confirmed")
+            socket.off("ride-started")
+            socket.off("ride-completed")
         }
     }, [booking?._id])
+
     if (loading) {
         return (
             <div className='h-screen w-full bg-zinc-950 flex items-center justify-center'>

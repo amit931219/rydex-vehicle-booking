@@ -60,43 +60,31 @@ function page() {
 
     const {id}=useParams()
     useEffect(() => {
-        async function fetch() {
-            setLoading(true)
-            try {
-                const { data } = await axios.post("/api/user/active-ride",{
-                    bookingId:id
-                })
-                setBooking(data)
-                console.log(data)
-                setStatus(data.bookingStatus)
-                setPickUpPos([data.pickUpLocation.coordinates[1], data.pickUpLocation.coordinates[0]])
-                setDropPos([data.dropLocation.coordinates[1], data.dropLocation.coordinates[0]])
-                setLoading(false)
-            } catch (error: any) {
-                console.log(error.response.data.message)
-                setLoading(false)
-            }
-        }
-        fetch()
-    }, [])
-
-    const onChatToggle = () => {
-        setChatOpen(prev => !prev)
-    }
-
-    useEffect(() => {
-       const socket=getSocket()
-        socket.emit("join-ride",id)
-        socket.on("driver-location",({latitude,longitude})=>{
-            setDriverPos([latitude,longitude])
+        const socket = getSocket()
+        socket.emit("join-ride", id)
+        socket.on("driver-location", ({ latitude, longitude }) => {
+            setDriverPos([latitude, longitude])
         })
-       return ()=>{
-        socket.off("join-ride")
-        socket.off("driver-location")
-
-       }
-    }, [])
-
+        socket.on("ride-started", (data) => {
+            setStatus("started")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "started", dropOtp: data.dropOtp || prev.dropOtp } : prev)
+        })
+        socket.on("ride-completed", () => {
+            setStatus("completed")
+            setBooking((prev) => prev ? { ...prev, bookingStatus: "completed" } : prev)
+        })
+        socket.on("otp-updated", (data) => {
+            if (data.pickUpOtp) setBooking((prev) => prev ? { ...prev, pickUpOtp: data.pickUpOtp } : prev)
+            if (data.dropOtp) setBooking((prev) => prev ? { ...prev, dropOtp: data.dropOtp } : prev)
+        })
+        return () => {
+            socket.off("join-ride")
+            socket.off("driver-location")
+            socket.off("ride-started")
+            socket.off("ride-completed")
+            socket.off("otp-updated")
+        }
+    }, [id])
 
     if (loading) {
         return (
@@ -120,7 +108,7 @@ function page() {
     const displayEta = status === "confirmed" ? etaToPickUp : etaToDrop
     const displayDistance = status === "confirmed" ? distanceToPickUp : distanceToDrop
     const paymentStatus = PAYMENT_BADGE[booking?.paymentStatus! ?? "pending"]
-    const panelProps = { isActive, displayDistance, displayEta, cfg, status, booking, paymentStatus, canChat, chatOpen, onChatToggle, currentRole: "user" }
+    const panelProps = { isActive, displayDistance, displayEta, cfg, status, booking, paymentStatus, canChat, chatOpen, onChatToggle: () => setChatOpen((prev) => !prev), currentRole: "user" }
     return (
         <div className='h-screen w-full bg-zinc-100 flex flex-col lg:flex-row overflow-hidden'>
             <div className='relative flex-1 h-full z-0'>

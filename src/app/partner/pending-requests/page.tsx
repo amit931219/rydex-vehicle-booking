@@ -52,7 +52,7 @@ function page() {
     const fetchPendingRequests = async () => {
         try {
             setLoading(true)
-            const { data } = await axios.get("/api/partner/bookings/pending")
+            const { data } = await axios.get("/api/partner/active-ride/pending")
             setBookings(data)
             setLoading(false)
         } catch (error) {
