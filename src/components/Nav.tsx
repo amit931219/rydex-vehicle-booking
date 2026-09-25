@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import AuthModal from './AuthModal'
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/redux/store'
-import { Bike, Car, ChevronRight, LogOut, Menu, Truck, X } from 'lucide-react'
+import { Bike, Car, ChevronRight, LogOut, Truck } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { setUserData } from '@/redux/userSlice'
 import axios from 'axios'
@@ -17,7 +17,6 @@ function Nav() {
     const pathName = usePathname()
     const [authOpen, setAuthOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
-    const [menuOpen, setMenuOpen] = useState(false)
     const { userData } = useSelector((state: RootState) => state.user)
     const [pendingCount, setPendingCount] = useState(0)
     const dispatch = useDispatch<AppDispatch>()
@@ -27,6 +26,18 @@ function Nav() {
         await signOut({ redirect: false })
         dispatch(setUserData(null))
         setProfileOpen(false)
+        window.location.href = "/"
+    }
+
+    const handleSwitchRole = async (targetRole?: "user" | "partner") => {
+        try {
+            const nextRole = targetRole || (userData?.role === "partner" ? "user" : "partner")
+            await axios.post("/api/user/switch-role", { targetRole: nextRole })
+            setProfileOpen(false)
+            window.location.href = "/"
+        } catch (error) {
+            console.error("switch role error:", error)
+        }
     }
 
     const fetchCount = async () => {
@@ -39,7 +50,7 @@ function Nav() {
     }
 
     useEffect(() => {
-        if (userData?.role == "partner") {
+        if (userData?.role === "partner") {
             fetchCount()
         }
     }, [userData?.role])
@@ -70,7 +81,7 @@ function Nav() {
                     </Link>
 
                     <div className='hidden md:flex items-center gap-8'>
-                        {userData?.role == "partner" ? (
+                        {userData?.role === "partner" ? (
                             <>
                                 <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/"}>Dashboard</Link>
                                 <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/partner/pending-requests"}>
@@ -100,14 +111,18 @@ function Nav() {
                     <div className='flex items-center gap-3 relative'>
                         <div className='hidden md:block relative'>
                             {!userData ? (
-                                <button className='px-4 py-1.5 rounded-full bg-white text-black text-sm font-medium hover:bg-gray-100 transition'
+                                <button
+                                    className='px-4 py-1.5 rounded-full bg-white text-black text-sm font-medium hover:bg-gray-100 transition cursor-pointer'
                                     onClick={() => setAuthOpen(true)}
                                 >
                                     Login
                                 </button>
                             ) : (
                                 <>
-                                    <button className='w-11 h-11 rounded-full bg-white text-black font-bold flex items-center justify-center' onClick={() => setProfileOpen(p => !p)}>
+                                    <button
+                                        className='w-11 h-11 rounded-full bg-white text-black font-bold flex items-center justify-center cursor-pointer hover:bg-gray-100 transition'
+                                        onClick={() => setProfileOpen(p => !p)}
+                                    >
                                         {userData.name.charAt(0).toUpperCase()}
                                     </button>
 
@@ -120,17 +135,31 @@ function Nav() {
                                                 className="absolute top-14 right-0 w-[300px] bg-white text-black rounded-2xl shadow-xl border overflow-hidden"
                                             >
                                                 <div className='p-5'>
-                                                    <p className='font-semibold text-lg'>{userData.name}</p>
-                                                    <p className='text-xs uppercase text-gray-500 mb-4'>{userData.role}</p>
+                                                    <div className='flex items-center justify-between mb-3 pb-3 border-b'>
+                                                        <div>
+                                                            <p className='font-semibold text-base'>{userData.name}</p>
+                                                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
+                                                                {userData.role === "partner" ? "Driver / Partner" : "Customer / Rider"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
 
-                                                    {userData.role != "partner" ? (
+                                                    {userData.role !== "partner" ? (
                                                         <>
-                                                            <div className='w-full flex items-center gap-3 pl-3 pb-3 pt-3 hover:bg-gray-100 rounded-xl cursor-pointer' onClick={() => { setProfileOpen(false); router.push("/user/bookings"); }}>
-                                                                Bookings
+                                                            <button
+                                                                onClick={() => handleSwitchRole("partner")}
+                                                                className='w-full flex items-center justify-between p-2.5 rounded-xl bg-black text-white hover:bg-gray-800 text-xs font-semibold transition cursor-pointer mb-2'
+                                                            >
+                                                                <span>⚡ Switch to Driver Mode</span>
+                                                                <ChevronRight size={14} />
+                                                            </button>
+
+                                                            <div className='w-full flex items-center gap-3 pl-3 pb-3 pt-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/user/bookings"); }}>
+                                                                My Bookings
                                                                 <ChevronRight size={16} className='ml-auto' />
                                                             </div>
 
-                                                            <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
+                                                            <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
                                                                 <div className='flex -space-x-2'>
                                                                     <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'> <Bike size={14} /></div>
                                                                     <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Car size={14} /></div>
@@ -142,6 +171,14 @@ function Nav() {
                                                         </>
                                                     ) : (
                                                         <div className='flex flex-col gap-1 border-b pb-3 mb-2'>
+                                                            <button
+                                                                onClick={() => handleSwitchRole("user")}
+                                                                className='w-full flex items-center justify-between p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-900 transition cursor-pointer mb-2'
+                                                            >
+                                                                <span>🚗 Switch to Customer Mode</span>
+                                                                <ChevronRight size={14} />
+                                                            </button>
+
                                                             <Link className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 text-sm font-medium" href={"/partner/pending-requests"} onClick={() => setProfileOpen(false)}>
                                                                 <span>Pending Requests</span>
                                                                 <span className="w-5 h-5 bg-black text-white text-xs rounded-full flex items-center justify-center font-bold">{pendingCount ?? 0}</span>
@@ -155,7 +192,7 @@ function Nav() {
                                                         </div>
                                                     )}
 
-                                                    <button className='w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl mt-2 cursor-pointer' onClick={handleLogOut}>
+                                                    <button className='w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl mt-2 cursor-pointer text-sm font-medium text-red-600' onClick={handleLogOut}>
                                                         <LogOut size={16} />
                                                         Logout
                                                     </button>
@@ -169,13 +206,17 @@ function Nav() {
 
                         <div className='md:hidden'>
                             {!userData ? (
-                                <button className='px-4 py-1.5 rounded-full bg-white text-black text-sm'
+                                <button
+                                    className='px-4 py-1.5 rounded-full bg-white text-black text-sm cursor-pointer'
                                     onClick={() => setAuthOpen(true)}
                                 >
                                     Login
                                 </button>
                             ) : (
-                                <button className='w-11 h-11 rounded-full bg-white text-black font-bold' onClick={() => setProfileOpen(p => !p)}>
+                                <button
+                                    className='w-11 h-11 rounded-full bg-white text-black font-bold cursor-pointer'
+                                    onClick={() => setProfileOpen(p => !p)}
+                                >
                                     {userData.name.charAt(0).toUpperCase()}
                                 </button>
                             )}
@@ -202,16 +243,30 @@ function Nav() {
                             className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-50 md:hidden"
                         >
                             <div className='p-5'>
-                                <p className='font-semibold text-lg'>{userData.name}</p>
-                                <p className='text-xs uppercase text-gray-500 mb-4'>{userData.role}</p>
+                                <div className='flex items-center justify-between mb-4 pb-3 border-b'>
+                                    <div>
+                                        <p className='font-semibold text-lg'>{userData.name}</p>
+                                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
+                                            {userData.role === "partner" ? "Driver / Partner" : "Customer / Rider"}
+                                        </span>
+                                    </div>
+                                </div>
 
-                                {userData.role != "partner" ? (
+                                {userData.role !== "partner" ? (
                                     <>
-                                        <div className='w-full flex items-center gap-3 pt-3 pb-3 pl-3 hover:bg-gray-100 rounded-xl cursor-pointer' onClick={() => { setProfileOpen(false); router.push("/user/bookings"); }}>
-                                            Bookings
+                                        <button
+                                            onClick={() => handleSwitchRole("partner")}
+                                            className='w-full flex items-center justify-between p-3 rounded-xl bg-black text-white hover:bg-gray-800 text-sm font-semibold transition cursor-pointer mb-3'
+                                        >
+                                            <span>⚡ Switch to Driver Mode</span>
+                                            <ChevronRight size={16} />
+                                        </button>
+
+                                        <div className='w-full flex items-center gap-3 pt-3 pb-3 pl-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/user/bookings"); }}>
+                                            My Bookings
                                             <ChevronRight size={16} className='ml-auto' />
                                         </div>
-                                        <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
+                                        <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
                                             <div className='flex -space-x-2'>
                                                 <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'> <Bike size={14} /></div>
                                                 <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Car size={14} /></div>
@@ -223,6 +278,14 @@ function Nav() {
                                     </>
                                 ) : (
                                     <div className='flex flex-col gap-3 border-b pb-3 mb-2'>
+                                        <button
+                                            onClick={() => handleSwitchRole("user")}
+                                            className='w-full flex items-center justify-between p-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-900 transition cursor-pointer mb-2'
+                                        >
+                                            <span>🚗 Switch to Customer Mode</span>
+                                            <ChevronRight size={16} />
+                                        </button>
+
                                         <Link className="relative text-sm font-medium text-black hover:text-gray-500 transition flex items-center justify-between" href={"/partner/pending-requests"} onClick={() => setProfileOpen(false)}>
                                             <span>Pending Requests</span>
                                             <span className="w-6 h-6 bg-black text-white text-xs rounded-full flex items-center justify-center font-bold">{pendingCount ?? 0}</span>
@@ -232,7 +295,7 @@ function Nav() {
                                     </div>
                                 )}
 
-                                <button className='w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl mt-2 cursor-pointer' onClick={handleLogOut}>
+                                <button className='w-full flex items-center gap-3 py-3 hover:bg-gray-100 rounded-xl mt-2 cursor-pointer text-sm font-medium text-red-600' onClick={handleLogOut}>
                                     <LogOut size={16} />
                                     Logout
                                 </button>
