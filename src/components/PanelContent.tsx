@@ -1,6 +1,7 @@
 'use client'
-import { Bike, Car, Clock, IndianRupee, MessageCircle, Phone, Truck, User } from 'lucide-react'
-import React from 'react'
+import { Bike, Car, CheckCircle2, Clock, CreditCard, IndianRupee, Loader2, MessageCircle, Phone, Truck, User, Wallet } from 'lucide-react'
+import React, { useState } from 'react'
+import axios from 'axios'
 import { AnimatePresence, motion } from "motion/react"
 import RideChat from './RideChat'
 
@@ -46,9 +47,89 @@ function PanelContent({
     onChatToggle,
     currentRole
 }: PanelContentProps) {
+    const [paying, setPaying] = useState(false);
+    const [currentPaymentStatus, setCurrentPaymentStatus] = useState<string>(booking?.paymentStatus || "pending");
+
     if (!booking) return null;
 
     const isUser = currentRole === "user";
+
+    const loadRazorpayScript = () => {
+        return new Promise((resolve) => {
+            if (typeof window === "undefined") {
+                resolve(false);
+                return;
+            }
+            if ((window as any).Razorpay) {
+                resolve(true);
+                return;
+            }
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+    };
+
+    const handleRazorpayPayment = async () => {
+        if (!booking?._id) return;
+        setPaying(true);
+        try {
+            const loaded = await loadRazorpayScript();
+            if (!loaded) {
+                alert("Failed to load Razorpay SDK. Please check your internet connection.");
+                setPaying(false);
+                return;
+            }
+
+            const { data } = await axios.post("/api/payment/create", {
+                bookingId: booking._id
+            });
+
+            const paymentObject = new (window as any).Razorpay({
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_TDUVzaQuoV56SK",
+                amount: data.amount,
+                currency: "INR",
+                name: "RYDEX",
+                description: "Ride Payment",
+                order_id: data.orderId,
+                prefill: {
+                    name: booking?.user?.name || "Customer",
+                    email: booking?.user?.email || "customer@rydex.com",
+                    contact: booking?.userMobileNumber || "9999999999"
+                },
+                handler: async function (response: any) {
+                    try {
+                        const { data: verifyData } = await axios.post("/api/payment/verify", {
+                            bookingId: booking._id,
+                            ...response
+                        });
+                        setPaying(false);
+                        if (verifyData.success) {
+                            setCurrentPaymentStatus("paid");
+                            booking.paymentStatus = "paid";
+                            alert("Payment Successful! Your ride is now paid online.");
+                        }
+                    } catch (vErr) {
+                        setPaying(false);
+                        console.error("Verification error:", vErr);
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setPaying(false);
+                    }
+                }
+            });
+
+            paymentObject.open();
+        } catch (err: any) {
+            console.error("Razorpay payment error:", err);
+            setPaying(false);
+            alert(err?.response?.data?.message || err?.message || "Payment initiation failed");
+        }
+    };
     const personName = isUser
         ? (booking?.driver?.name || "Driver")
         : (booking?.user?.name || "Customer");
@@ -187,11 +268,15 @@ function PanelContent({
 
                         <div className='flex items-center gap-2 mt-1'>
                             <span className='text-[10px] text-zinc-400 font-medium'>{personRoleLabel}</span>
-                            {paymentStatus && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${paymentStatus.cls ?? "bg-zinc-700 text-zinc-300"}`}>
-                                    {paymentStatus.label}
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                    (currentPaymentStatus === "paid" || booking?.paymentStatus === "paid")
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : (currentPaymentStatus === "cash" || booking?.paymentStatus === "cash")
+                                            ? "bg-zinc-100 text-zinc-700"
+                                            : "bg-amber-100 text-amber-700"
+                                }`}>
+                                    {(currentPaymentStatus === "paid" || booking?.paymentStatus === "paid") ? "Paid" : ((currentPaymentStatus === "cash" || booking?.paymentStatus === "cash") ? "Cash" : "Pending")}
                                 </span>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -215,6 +300,35 @@ function PanelContent({
                                 {chatOpen ? "Close Chat" : "Message"}
                             </button>
                         )}
+                    </div>
+                )}
+
+                {/* Pay Online via Razorpay for Customer */}
+                {isUser && isActive && currentPaymentStatus !== "paid" && booking?.paymentStatus !== "paid" && (
+                    <div className="mt-2.5">
+                        <button
+                            type="button"
+                            onClick={handleRazorpayPayment}
+                            disabled={paying}
+                            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all"
+                        >
+                            {paying ? (
+                                <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                                <>
+                                    <Wallet size={15} />
+                                    <span>Pay ₹{booking.fare} Online via Razorpay</span>
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[10px] text-zinc-400 text-center mt-1">UPI · Credit/Debit Card · Netbanking</p>
+                    </div>
+                )}
+
+                {(currentPaymentStatus === "paid" || booking?.paymentStatus === "paid") && (
+                    <div className="mt-2.5 flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs py-2.5 px-4 rounded-xl">
+                        <CheckCircle2 size={15} className="text-emerald-600" />
+                        <span>Ride Paid Online via Razorpay</span>
                     </div>
                 )}
             </motion.div>

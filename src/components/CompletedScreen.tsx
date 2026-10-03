@@ -2,7 +2,8 @@
 import { IBooking, PaymentStatus } from '@/models/booking.model'
 import React from 'react'
 import { motion } from "motion/react"
-import { CheckCircle, CheckCircle2, IndianRupee, User } from 'lucide-react'
+import { CheckCircle, CheckCircle2, IndianRupee, Loader2, User, Wallet } from 'lucide-react'
+import axios from 'axios'
 import { useRouter } from 'next/navigation'
 
 const PAYMENT_BADGE: Record<any, { label: string; cls: string }> = {

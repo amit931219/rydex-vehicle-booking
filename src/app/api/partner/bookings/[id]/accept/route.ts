@@ -37,7 +37,7 @@ export async function GET(
         booking.pickUpOtp = otp;
         booking.pickUpOtpExpires = new Date(Date.now() + 2 * 60 * 60 * 1000);
         booking.bookingStatus = "confirmed";
-        if (!booking.paymentStatus || booking.paymentStatus === "pending") {
+        if (!booking.paymentStatus) {
             booking.paymentStatus = "cash";
         }
         await booking.save();

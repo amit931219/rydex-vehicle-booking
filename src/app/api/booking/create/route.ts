@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
             dropLocation,
             fare,
             mobileNumber,
+            paymentMethod,
         } = await req.json()
 
         if (!driverId || !vehicleId || !pickUpLocation?.coordinates || !dropLocation?.coordinates) {
@@ -99,7 +100,8 @@ export async function POST(req: NextRequest) {
             fare,
             userMobileNumber: mobileNumber || "9999999999",
             driverMobileNumber: driver.mobileNumber || "9988776655",
-            bookingStatus: "requested"
+            bookingStatus: "requested",
+            paymentStatus: paymentMethod === "online" ? "pending" : "cash"
         })
 
         try {

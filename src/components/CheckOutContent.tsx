@@ -61,6 +61,7 @@ function CheckOutContent() {
         },
         fare,
         mobileNumber: mobile,
+        paymentMethod,
       })
       setBooking(data)
       setLoading(false)
@@ -364,7 +365,7 @@ function CheckOutContent() {
                           [
                             { icon: <Clock size={14} />, text: "Driver will respond within 2 minutes" },
                             { icon: <Shield size={14} />, text: "Verified & insured drivers only" },
-                            { icon: <CreditCard size={14} />, text: "Pay after driver accepts" },
+                            { icon: <CreditCard size={14} />, text: "Cash or Razorpay online accepted" },
                           ].map((item, i) => (
                             <div key={i} className="flex items-center gap-3">
                               <div className='w-7 h-7 rounded-xl bg-zinc-200 flex items-center justify-center text-zinc-600 flex-shrink-0'>{item.icon}</div>
@@ -372,6 +373,39 @@ function CheckOutContent() {
                             </div>
                           ))
                         }
+                      </div>
+
+                      <div className="mt-5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 mb-2.5">Select Payment Method</p>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("cash")}
+                            className={`p-3.5 rounded-2xl border-2 flex items-center gap-3 transition-all text-left ${paymentMethod === "cash" ? "border-zinc-900 bg-zinc-900 text-white shadow-sm" : "border-zinc-200 bg-zinc-50 text-zinc-800 hover:border-zinc-300"}`}
+                          >
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${paymentMethod === "cash" ? "bg-white/10" : "bg-zinc-200"}`}>
+                              <Banknote size={17} className={paymentMethod === "cash" ? "text-white" : "text-zinc-700"} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black leading-tight">Cash</p>
+                              <p className={`text-[10px] font-medium ${paymentMethod === "cash" ? "text-zinc-300" : "text-zinc-400"}`}>Pay driver directly</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("online")}
+                            className={`p-3.5 rounded-2xl border-2 flex items-center gap-3 transition-all text-left ${paymentMethod === "online" ? "border-zinc-900 bg-zinc-900 text-white shadow-sm" : "border-zinc-200 bg-zinc-50 text-zinc-800 hover:border-zinc-300"}`}
+                          >
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${paymentMethod === "online" ? "bg-white/10" : "bg-zinc-200"}`}>
+                              <Wallet size={17} className={paymentMethod === "online" ? "text-white" : "text-zinc-700"} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black leading-tight">Razorpay</p>
+                              <p className={`text-[10px] font-medium ${paymentMethod === "online" ? "text-zinc-300" : "text-zinc-400"}`}>UPI / Card / Netbanking</p>
+                            </div>
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {errorMessage && (
