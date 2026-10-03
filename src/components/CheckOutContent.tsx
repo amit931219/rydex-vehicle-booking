@@ -188,21 +188,39 @@ function CheckOutContent() {
   }
 
 
+  const isDraftingNewRide = Boolean(vehicle || vehicleId || fare);
+
   const fetchActiveBooking = async () => {
-    try {
-      const { data } = await axios.get("/api/booking/active")
-      if (data?.booking && typeof data.booking === "object") {
-        setBooking(data.booking)
-        const currentStatus = data.booking.bookingStatus
-        setStatus(currentStatus)
-        if (currentStatus === "confirmed" || currentStatus === "started") {
-          window.location.href = `/user/ride/${data.booking._id}`
+    const targetId = booking?._id;
+    if (targetId) {
+      try {
+        const { data } = await axios.get(`/api/booking/${targetId}`);
+        if (data?.booking) {
+          const currentStatus = data.booking.bookingStatus;
+          setStatus(currentStatus);
+          if (currentStatus === "confirmed" || currentStatus === "started") {
+            window.location.href = `/user/ride/${data.booking._id}`;
+          }
         }
+      } catch (error) {
+        console.log(error);
       }
-    } catch (error) {
-      console.log(error)
+    } else if (!isDraftingNewRide) {
+      try {
+        const { data } = await axios.get("/api/booking/active");
+        if (data?.booking && typeof data.booking === "object") {
+          setBooking(data.booking);
+          const currentStatus = data.booking.bookingStatus;
+          setStatus(currentStatus);
+          if (currentStatus === "confirmed" || currentStatus === "started") {
+            window.location.href = `/user/ride/${data.booking._id}`;
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
     }
-  }
+  };
 
   const handleCancel = async () => {
     if (!booking?._id) {
@@ -210,20 +228,23 @@ function CheckOutContent() {
       return;
     }
     try {
-      const { data } = await axios.get(`/api/booking/${booking._id}/cancel`)
-     setStatus("idle")
+      const { data } = await axios.get(`/api/booking/${booking._id}/cancel`);
+      setStatus("idle");
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchActiveBooking()
+    // If drafting a new ride, do NOT poll or hijack with old booking until user requests it
+    if (isDraftingNewRide && (!booking?._id || status === "idle")) return;
+
+    fetchActiveBooking();
     const interval = setInterval(() => {
-      fetchActiveBooking()
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
+      fetchActiveBooking();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [booking?._id, status, isDraftingNewRide]);
 
   useEffect(() => {
     if (status !== "awaiting_payment") return;

@@ -76,8 +76,13 @@ function page() {
                 if (b.dropLocation?.coordinates?.length === 2) {
                     setDropPos([b.dropLocation.coordinates[1], b.dropLocation.coordinates[0]])
                 }
-                if (b.driver?.location?.coordinates?.length === 2) {
+                if (b.driver?.location?.coordinates?.length === 2 && b.driver.location.coordinates[0] !== 0) {
                     setDriverPos([b.driver.location.coordinates[1], b.driver.location.coordinates[0]])
+                } else if (b.pickUpLocation?.coordinates?.length === 2) {
+                    // Sensible default location ~800m away so driver car appears on live map immediately
+                    const pLat = b.pickUpLocation.coordinates[1]
+                    const pLon = b.pickUpLocation.coordinates[0]
+                    setDriverPos([pLat + 0.007, pLon + 0.007])
                 }
             }
         } catch (error) {
@@ -100,7 +105,9 @@ function page() {
         const socket = getSocket()
         socket.emit("join-ride", id)
         socket.on("driver-location", ({ latitude, longitude }) => {
-            setDriverPos([latitude, longitude])
+            if (latitude && longitude) {
+                setDriverPos([latitude, longitude])
+            }
         })
         socket.on("ride-confirmed", (data) => {
             setStatus("confirmed")

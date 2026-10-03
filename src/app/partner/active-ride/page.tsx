@@ -141,6 +141,13 @@ function page() {
             if (data.dropLocation?.coordinates?.length === 2) {
                 setDropPos([data.dropLocation.coordinates[1], data.dropLocation.coordinates[0]])
             }
+            if (data.driver?.location?.coordinates?.length === 2 && data.driver.location.coordinates[0] !== 0) {
+                setDriverPos([data.driver.location.coordinates[1], data.driver.location.coordinates[0]])
+            } else if (data.pickUpLocation?.coordinates?.length === 2) {
+                const pLat = data.pickUpLocation.coordinates[1]
+                const pLon = data.pickUpLocation.coordinates[0]
+                setDriverPos([pLat + 0.007, pLon + 0.007])
+            }
         } catch (error: any) {
             console.log(error?.response?.data?.message || error)
         } finally {

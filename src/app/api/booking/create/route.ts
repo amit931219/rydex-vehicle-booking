@@ -52,19 +52,17 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        const existing = await Booking.findOne({
-            user: user._id,
-            bookingStatus: {
-                $in: ["confirmed", "started"]
-            }
-        })
+        const staleThreshold = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
-        if (existing) {
-            return NextResponse.json(
-                { message: "You already have an active ride in progress", booking: existing },
-                { status: 409 }
-            )
-        }
+        // Auto-cancel any stale uncompleted bookings older than 2 hours so user is never locked out
+        await Booking.updateMany(
+            {
+                user: user._id,
+                bookingStatus: { $in: ["requested", "awaiting_payment", "confirmed", "started"] },
+                createdAt: { $lt: staleThreshold }
+            },
+            { bookingStatus: "cancelled" }
+        );
 
         // Cancel any pending requested/awaiting_payment bookings
         await Booking.updateMany(
@@ -73,7 +71,22 @@ export async function POST(req: NextRequest) {
                 bookingStatus: { $in: ["requested", "awaiting_payment"] }
             },
             { bookingStatus: "cancelled" }
-        )
+        );
+
+        const existing = await Booking.findOne({
+            user: user._id,
+            bookingStatus: {
+                $in: ["confirmed", "started"]
+            },
+            createdAt: { $gte: staleThreshold }
+        });
+
+        if (existing) {
+            return NextResponse.json(
+                { message: "You already have an active ride in progress", booking: existing },
+                { status: 409 }
+            )
+        }
 
         const booking = await Booking.create({
             user: user._id,

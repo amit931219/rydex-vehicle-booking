@@ -23,9 +23,11 @@ export async function GET() {
             return NextResponse.json({ message: "user not found" }, { status: 404 })
         }
 
+        const staleThreshold = new Date(Date.now() - 2 * 60 * 60 * 1000);
         const booking = await Booking.findOne({
             driver: user._id,
-            bookingStatus: { $in: ["awaiting_payment", "confirmed", "started"] }
+            bookingStatus: { $in: ["awaiting_payment", "confirmed", "started"] },
+            createdAt: { $gte: staleThreshold }
         }).populate("user vehicle driver").sort({ createdAt: -1 })
 
         return NextResponse.json(booking, { status: 200 })
