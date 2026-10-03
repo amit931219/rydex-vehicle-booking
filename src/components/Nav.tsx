@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import AuthModal from './AuthModal'
 import { useDispatch, useSelector } from 'react-redux'
 import { AppDispatch, RootState } from '@/redux/store'
-import { Bike, Car, ChevronRight, LogOut, Truck } from 'lucide-react'
+import { Bike, Car, ChevronRight, LogOut, Shield, Truck } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { setUserData } from '@/redux/userSlice'
 import axios from 'axios'
@@ -35,8 +35,13 @@ function Nav() {
             await axios.post("/api/user/switch-role", { targetRole: nextRole })
             setProfileOpen(false)
             window.location.href = "/"
-        } catch (error) {
+        } catch (error: any) {
             console.error("switch role error:", error)
+            const redirectUrl = error?.response?.data?.redirectUrl
+            if (redirectUrl) {
+                setProfileOpen(false)
+                router.push(redirectUrl)
+            }
         }
     }
 
@@ -81,9 +86,16 @@ function Nav() {
                     </Link>
 
                     <div className='hidden md:flex items-center gap-8'>
+                        {userData?.role === "admin" && (
+                            <Link className="relative text-sm font-bold text-purple-400 hover:text-purple-300 transition flex items-center gap-1" href={"/admin"}>
+                                <Shield size={14} />
+                                <span>Admin Console</span>
+                            </Link>
+                        )}
+
                         {userData?.role === "partner" ? (
                             <>
-                                <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/"}>Dashboard</Link>
+                                <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/driver/dashboard"}>Driver Console</Link>
                                 <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/partner/pending-requests"}>
                                     Pending Requests
                                     <span className="absolute -top-2 -right-5 w-6 h-6 bg-white text-black text-xs rounded-full flex items-center justify-center font-bold">{pendingCount ?? 0}</span>
@@ -97,12 +109,12 @@ function Nav() {
                                 {userData && (
                                     <Link className="relative text-sm font-medium text-gray-300 hover:text-white transition" href={"/user/bookings"}>My Rides</Link>
                                 )}
-                                <Link className="relative text-sm font-semibold text-yellow-400 hover:text-yellow-300 transition flex items-center gap-1.5" href={"/partner/onboarding/vehicle"}>
+                                <Link className="relative text-sm font-semibold text-yellow-400 hover:text-yellow-300 transition flex items-center gap-1.5" href={"/driver/apply"}>
                                     <div className='flex -space-x-1'>
                                         <div className='w-4 h-4 rounded-full bg-white text-black flex items-center justify-center'><Bike size={10} /></div>
                                         <div className='w-4 h-4 rounded-full bg-white text-black flex items-center justify-center'><Car size={10} /></div>
                                     </div>
-                                    <span>Become a Partner</span>
+                                    <span>{userData?.partnerStatus === "pending" ? "Application Pending" : "Become a Driver"}</span>
                                 </Link>
                             </>
                         )}
@@ -138,11 +150,18 @@ function Nav() {
                                                     <div className='flex items-center justify-between mb-3 pb-3 border-b'>
                                                         <div>
                                                             <p className='font-semibold text-base'>{userData.name}</p>
-                                                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
-                                                                {userData.role === "partner" ? "Driver / Partner" : "Customer / Rider"}
+                                                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : userData.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
+                                                                {userData.role === "partner" ? "Driver / Partner" : userData.role === "admin" ? "Administrator" : "Customer / Rider"}
                                                             </span>
                                                         </div>
                                                     </div>
+
+                                                    {userData.role === "admin" && (
+                                                        <div className='w-full flex items-center gap-3 py-2.5 px-3 bg-purple-50 hover:bg-purple-100 rounded-xl cursor-pointer text-xs font-bold text-purple-800 mb-2' onClick={() => { setProfileOpen(false); router.push("/admin"); }}>
+                                                            🛡️ Admin Management Console
+                                                            <ChevronRight size={14} className='ml-auto' />
+                                                        </div>
+                                                    )}
 
                                                     {userData.role !== "partner" ? (
                                                         <>
@@ -159,13 +178,13 @@ function Nav() {
                                                                 <ChevronRight size={16} className='ml-auto' />
                                                             </div>
 
-                                                            <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
+                                                            <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/driver/apply"); }}>
                                                                 <div className='flex -space-x-2'>
                                                                     <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'> <Bike size={14} /></div>
                                                                     <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Car size={14} /></div>
                                                                     <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Truck size={14} /></div>
                                                                 </div>
-                                                                Become a Partner
+                                                                {userData?.partnerStatus === "pending" ? "Application Pending" : "Become a Driver"}
                                                                 <ChevronRight size={16} className='ml-auto' />
                                                             </div>
                                                         </>
@@ -179,6 +198,9 @@ function Nav() {
                                                                 <ChevronRight size={14} />
                                                             </button>
 
+                                                            <Link className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 text-sm font-bold text-emerald-700" href={"/driver/dashboard"} onClick={() => setProfileOpen(false)}>
+                                                                <span>⚡ Driver Command Center</span>
+                                                            </Link>
                                                             <Link className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 text-sm font-medium" href={"/partner/pending-requests"} onClick={() => setProfileOpen(false)}>
                                                                 <span>Pending Requests</span>
                                                                 <span className="w-5 h-5 bg-black text-white text-xs rounded-full flex items-center justify-center font-bold">{pendingCount ?? 0}</span>
@@ -246,11 +268,18 @@ function Nav() {
                                 <div className='flex items-center justify-between mb-4 pb-3 border-b'>
                                     <div>
                                         <p className='font-semibold text-lg'>{userData.name}</p>
-                                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
-                                            {userData.role === "partner" ? "Driver / Partner" : "Customer / Rider"}
+                                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${userData.role === "partner" ? "bg-amber-100 text-amber-800" : userData.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
+                                            {userData.role === "partner" ? "Driver / Partner" : userData.role === "admin" ? "Administrator" : "Customer / Rider"}
                                         </span>
                                     </div>
                                 </div>
+
+                                {userData.role === "admin" && (
+                                    <div className='w-full flex items-center gap-3 py-2.5 px-3 bg-purple-50 hover:bg-purple-100 rounded-xl cursor-pointer text-xs font-bold text-purple-800 mb-3' onClick={() => { setProfileOpen(false); router.push("/admin"); }}>
+                                        🛡️ Admin Management Console
+                                        <ChevronRight size={16} className='ml-auto' />
+                                    </div>
+                                )}
 
                                 {userData.role !== "partner" ? (
                                     <>
@@ -266,13 +295,13 @@ function Nav() {
                                             My Bookings
                                             <ChevronRight size={16} className='ml-auto' />
                                         </div>
-                                        <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/partner/onboarding/vehicle"); }}>
+                                        <div className='w-full flex items-center gap-3 py-3 px-3 hover:bg-gray-100 rounded-xl cursor-pointer text-sm font-medium' onClick={() => { setProfileOpen(false); router.push("/driver/apply"); }}>
                                             <div className='flex -space-x-2'>
                                                 <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'> <Bike size={14} /></div>
                                                 <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Car size={14} /></div>
                                                 <div className='w-6 h-6 rounded-full bg-black text-white flex items-center justify-center'><Truck size={14} /></div>
                                             </div>
-                                            Become a Partner
+                                            {userData?.partnerStatus === "pending" ? "Application Pending" : "Become a Driver"}
                                             <ChevronRight size={16} className='ml-auto' />
                                         </div>
                                     </>
@@ -286,6 +315,9 @@ function Nav() {
                                             <ChevronRight size={16} />
                                         </button>
 
+                                        <Link className="relative text-sm font-bold text-emerald-700 hover:text-emerald-800 transition flex items-center justify-between" href={"/driver/dashboard"} onClick={() => setProfileOpen(false)}>
+                                            <span>⚡ Driver Command Center</span>
+                                        </Link>
                                         <Link className="relative text-sm font-medium text-black hover:text-gray-500 transition flex items-center justify-between" href={"/partner/pending-requests"} onClick={() => setProfileOpen(false)}>
                                             <span>Pending Requests</span>
                                             <span className="w-6 h-6 bg-black text-white text-xs rounded-full flex items-center justify-center font-bold">{pendingCount ?? 0}</span>

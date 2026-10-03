@@ -22,15 +22,20 @@ export async function GET(
             );
         }
 
-        // Assign current partner as driver
+        // Enforce that accepting user is an approved and active driver
         const session = await auth();
-        if (session?.user?.email) {
-            const partner = await User.findOne({ email: session.user.email });
-            if (partner) {
-                booking.driver = partner._id;
-                booking.driverMobileNumber = partner.mobileNumber || booking.driverMobileNumber || "9988776655";
-            }
+        if (!session?.user?.email) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
+        const partner = await User.findOne({ email: session.user.email });
+        if (!partner || !["partner", "driver"].includes(partner.role) || partner.partnerStatus !== "approved" || partner.status === "SUSPENDED") {
+            return NextResponse.json(
+                { message: "You must be an approved, active driver to accept ride requests." },
+                { status: 403 }
+            );
+        }
+        booking.driver = partner._id;
+        booking.driverMobileNumber = partner.mobileNumber || booking.driverMobileNumber || "9988776655";
 
         // Generate 4-digit Pickup OTP immediately when accepted
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -49,7 +54,12 @@ export async function GET(
                 event: "accept-booking",
                 userId: booking.user?._id?.toString() || booking.user?.toString(),
                 data: "confirmed"
-            }, { timeout: 3000 });
+            }, { 
+                timeout: 3000,
+                headers: {
+                    "x-internal-secret": process.env.INTERNAL_SOCKET_SECRET || "rydex_internal_secret_2026"
+                }
+            });
         } catch (socketErr: any) {
             console.error("Socket emit accept-booking error:", socketErr?.message || socketErr);
         }
@@ -65,7 +75,12 @@ export async function GET(
                     pickUpOtp: otp,
                     booking
                 }
-            }, { timeout: 3000 });
+            }, { 
+                timeout: 3000,
+                headers: {
+                    "x-internal-secret": process.env.INTERNAL_SOCKET_SECRET || "rydex_internal_secret_2026"
+                }
+            });
         } catch (socketErr: any) {
             console.error("Socket emit ride-confirmed error:", socketErr?.message || socketErr);
         }
