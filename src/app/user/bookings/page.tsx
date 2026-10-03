@@ -58,7 +58,7 @@ function page() {
                 setBookings(data)
                 setLoading(false)
             } catch (error: any) {
-                console.log(error.response.data.message)
+                console.log(error?.response?.data?.message || error?.message)
                 setLoading(false)
             }
         }

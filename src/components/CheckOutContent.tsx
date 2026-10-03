@@ -31,14 +31,18 @@ function CheckOutContent() {
   const driverId = params.get("driverId") || ""
   const vehicleId = params.get("vehicleId") || ""
   const fare = params.get("fare") || ""
-  const { Icon, label } = VEHICLE_META[vehicle]
+  const vehicleKey = (vehicle || "").toLowerCase();
+  const vehicleMeta = VEHICLE_META[vehicleKey] || { label: vehicle || "Ride", Icon: Car };
+  const { Icon, label } = vehicleMeta;
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<Status>("idle")
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [booking, setBooking] = useState<any>()
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "online">("cash")
 
   const handleRequestBooking = async () => {
     setLoading(true)
+    setErrorMessage(null)
     try {
       console.log(dropLat)
       const { data } = await axios.post("/api/booking/create", {
@@ -63,7 +67,9 @@ function CheckOutContent() {
       setStatus("requested")
     } catch (error: any) {
       setLoading(false)
-      console.log(error.response.data.message)
+      const msg = error?.response?.data?.message || error?.message || "Failed to request ride. Please try again.";
+      console.log(msg)
+      setErrorMessage(msg)
     }
   }
 
@@ -129,6 +135,8 @@ function CheckOutContent() {
         const razorpayLoaded = await loadRazorpayScript()
         if (!razorpayLoaded) {
           alert("razorpay script failed to load")
+          setLoading(false)
+          return;
         }
 
         const { data } = await axios.post("/api/payment/create", {
@@ -197,6 +205,10 @@ function CheckOutContent() {
   }
 
   const handleCancel = async () => {
+    if (!booking?._id) {
+      setStatus("idle");
+      return;
+    }
     try {
       const { data } = await axios.get(`/api/booking/${booking._id}/cancel`)
      setStatus("idle")
@@ -341,13 +353,27 @@ function CheckOutContent() {
                         }
                       </div>
                     </div>
+                    {errorMessage && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold flex items-center gap-2">
+                        <XCircle size={16} className="flex-shrink-0" />
+                        <span>{errorMessage}</span>
+                      </div>
+                    )}
                     <motion.button
                       whileTap={{ scale: 0.97 }}
                       whileHover={{ scale: 1.02 }}
                       onClick={handleRequestBooking}
-                      className="w-full h-14 mt-8 bg-zinc-900 hover:bg-black disabled:opacity-40 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2.5 transition-colors shadow-md"
+                      disabled={loading}
+                      className="w-full h-14 mt-6 bg-zinc-900 hover:bg-black disabled:opacity-40 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2.5 transition-colors shadow-md"
                     >
-                      <span >Request Ride </span><ArrowRight size={15} />
+                      {loading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <span>Request Ride </span>
+                          <ArrowRight size={15} />
+                        </>
+                      )}
                     </motion.button>
 
                   </motion.div>
@@ -549,7 +575,14 @@ initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ dela
                     transition={{ delay: 0.5 }}
                       whileTap={{ scale: 0.97 }} 
                       whileHover={{ scale: 1.03 }}
-                      onClick={() => { window.location.href = `/user/ride/${booking._id}`; }}
+                      onClick={() => {
+                        const rideId = booking?._id;
+                        if (rideId) {
+                          window.location.href = `/user/ride/${rideId}`;
+                        } else {
+                          fetchActiveBooking();
+                        }
+                      }}
                       className="flex items-center gap-2.5 bg-zinc-900 hover:bg-black text-white font-black text-sm px-8 py-4 rounded-2xl transition-colors shadow-md"
                     >
                       Track Your Ride <ArrowRight size={16}/>

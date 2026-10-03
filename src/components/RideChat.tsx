@@ -53,7 +53,7 @@ messagesEndRef.current?.scrollIntoView({behavior:"smooth"})
             setMessages(data)
             setLastMessage(data[0])
         } catch (error:any) {
-            console.log(error.response.data.message)
+            console.log(error?.response?.data?.message || error?.message)
         }
     }
 

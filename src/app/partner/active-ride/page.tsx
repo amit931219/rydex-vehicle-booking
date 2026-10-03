@@ -80,15 +80,15 @@ function page() {
             console.log(data)
             setOtpMode(true)
         } catch (error: any) {
-            console.log(error.response.data.message)
+            console.log(error?.response?.data?.message || error?.message)
         }
     }
     const handleSendDropOtp = async () => {
         try {
             const { data } = await axios.post("/api/partner/bookings/otp/drop/send", { bookingId: booking?._id })
             setDropOtpMode(true)
-        } catch (error) {
-            console.log(error)
+        } catch (error: any) {
+            console.log(error?.response?.data?.message || error?.message)
         }
     }
     const handleVerifyPickUpOtp = async () => {
@@ -103,7 +103,7 @@ function page() {
         } catch (error:any) {
             console.log(error)
               setLoadingOtp(false)
-            setOtpError(error.response.data.message ?? "Verification failed")
+            setOtpError(error?.response?.data?.message ?? "Verification failed")
         }
     }
     const handleVerifyDropOtp = async () => {
@@ -117,7 +117,7 @@ function page() {
         } catch (error:any) {
             console.log(error)
               setLoadingDropOtp(false)
-            setDropOtpError(error.response.data.message ?? "Verification failed")
+            setDropOtpError(error?.response?.data?.message ?? "Verification failed")
         }
     }
 
