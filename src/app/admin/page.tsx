@@ -58,12 +58,20 @@ export default function AdminPage() {
     const [actionReason, setActionReason] = useState("")
     const [actionLoading, setActionLoading] = useState(false)
     const [feedback, setFeedback] = useState<{ text: string; type: "success" | "error" } | null>(null)
+    const [unauthorized, setUnauthorized] = useState(false)
 
     const fetchAllData = async () => {
         setLoading(true)
         try {
-            const [statsRes, driversRes, vehiclesRes, usersRes, bookingsRes] = await Promise.all([
-                axios.get("/api/admin/stats").catch(() => ({ data: { stats: {} } })),
+            const statsRes = await axios.get("/api/admin/stats").catch((err) => err.response || { data: { stats: {} } })
+            if (statsRes?.status === 401 || statsRes?.status === 403) {
+                setUnauthorized(true)
+                setLoading(false)
+                return
+            }
+            setUnauthorized(false)
+
+            const [driversRes, vehiclesRes, usersRes, bookingsRes] = await Promise.all([
                 axios.get(`/api/admin/drivers?status=${driverFilter}`).catch(() => ({ data: { drivers: [] } })),
                 axios.get(`/api/admin/vehicles?status=${vehicleFilter}`).catch(() => ({ data: { vehicles: [] } })),
                 axios.get("/api/admin/users").catch(() => ({ data: { users: [] } })),
@@ -184,6 +192,34 @@ export default function AdminPage() {
             d.driverProfile?.licenseNumber?.toLowerCase().includes(q)
         )
     })
+
+    if (unauthorized) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-gray-900">
+                <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-gray-200 shadow-xl text-center space-y-6">
+                    <div className="w-16 h-16 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center mx-auto">
+                        <Shield size={32} />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900">Admin Console Restricted</h2>
+                        <p className="text-xs text-gray-600 mt-2">
+                            You must be signed in with an Administrator account to access the platform management dashboard.
+                        </p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl text-left text-xs space-y-2 border">
+                        <p className="font-bold text-gray-700">Ready Test Admin Account:</p>
+                        <p className="text-gray-600">Email: <b className="text-black font-mono">admin@rydex.com</b></p>
+                        <p className="text-gray-600">Password: <b className="text-black font-mono">Admin@1234</b></p>
+                    </div>
+                    <div className="pt-2 flex flex-col gap-2">
+                        <Link href="/" className="w-full py-3 rounded-full bg-black text-white text-xs font-bold hover:bg-gray-800 transition">
+                            Back to Rydex Home / Login
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-linear-to-b from-gray-100 to-gray-200 text-gray-900 pb-20">

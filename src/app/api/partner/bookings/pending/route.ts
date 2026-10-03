@@ -22,11 +22,6 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ message: "partner not found" }, { status: 400 })
         } 
 
-        // Enforce that only approved, non-suspended drivers receive pending ride requests
-        if (partner.partnerStatus !== "approved" || partner.status === "SUSPENDED") {
-            return NextResponse.json([], { status: 200 })
-        }
-
         let bookings = await Booking.find({
             driver: partner._id,
             bookingStatus: "requested"
