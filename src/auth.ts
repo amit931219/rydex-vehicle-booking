@@ -76,6 +76,18 @@ Google({
       token.id = user.id
       token.email = user.email
       token.role = user.role
+    } else if(token.email) {
+      try {
+        await connectDb()
+        const dbUser = await User.findOne({ email: String(token.email).toLowerCase().trim() })
+        if(dbUser) {
+          token.role = dbUser.role
+          token.name = dbUser.name
+          token.id = dbUser._id.toString()
+        }
+      } catch (e) {
+        console.error("JWT role refresh non-fatal error:", e)
+      }
     }
     return token
    },
