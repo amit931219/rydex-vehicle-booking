@@ -83,7 +83,11 @@ function AuthModal({ open, onClose }: propType) {
                 setErr("Invalid email or password. Please verify your credentials.")
             } else {
                 onClose()
-                window.location.href = "/"
+                if (cleanEmail === "admin@rydex.com" || cleanEmail === "amt931219@gmail.com") {
+                    window.location.href = "/admin"
+                } else {
+                    window.location.href = "/"
+                }
             }
         } catch (error: any) {
             setLoading(false)
@@ -200,20 +204,36 @@ function AuthModal({ open, onClose }: propType) {
 
                                                 <div className='pt-2'>
                                                     <p className='text-[11px] text-gray-500 font-medium mb-1.5 text-center'>Quick Test Logins:</p>
-                                                    <div className='grid grid-cols-2 gap-2'>
+                                                    <div className='grid grid-cols-3 gap-1.5'>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFillDemo("admin@rydex.com", "Admin@1234")}
+                                                            className='text-xs py-1.5 px-2 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 font-semibold transition text-center cursor-pointer border border-purple-200'
+                                                        >
+                                                            Admin
+                                                        </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleFillDemo("user@rydex.com", "User@1234")}
-                                                            className='text-xs py-1.5 px-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition text-center cursor-pointer border border-gray-200'
+                                                            className='text-xs py-1.5 px-2 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 font-semibold transition text-center cursor-pointer border border-blue-200'
                                                         >
-                                                            Customer Login
+                                                            Customer
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleFillDemo("driver@rydex.com", "Driver@1234")}
-                                                            className='text-xs py-1.5 px-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition text-center cursor-pointer border border-gray-200'
+                                                            className='text-xs py-1.5 px-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-700 font-semibold transition text-center cursor-pointer border border-amber-200'
                                                         >
-                                                            Driver Login
+                                                            Driver
+                                                        </button>
+                                                    </div>
+                                                    <div className='mt-2 text-center'>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFillDemo("amt931219@gmail.com", "Admin@1234")}
+                                                            className='text-[11px] text-gray-600 hover:text-black hover:underline cursor-pointer bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 transition'
+                                                        >
+                                                            👑 Or login as amt931219@gmail.com (Admin)
                                                         </button>
                                                     </div>
                                                 </div>
